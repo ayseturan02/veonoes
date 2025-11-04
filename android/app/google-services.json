@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "111414030737",
+    "project_id": "veonoes",
+    "storage_bucket": "veonoes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111414030737:android:e9c3caca9f8b7a4e032a30",
+        "android_client_info": {
+          "package_name": "com.veonoes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqpiA3IuhH50SYiMXWh5HQIn6qZLG76Vo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
