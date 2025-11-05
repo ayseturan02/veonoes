@@ -1,30 +1,28 @@
 package com.veonoes.ar
 
-import com.veonoes.R
+import com.google.firebase.storage.FirebaseStorage
 
-// Tek bir gözlük modelini tanımlayan veri sınıfı
 data class GlassesSpec(
-    val resId: Int,                  // drawable kaynağı
-    val baselineEyeDistancePx: Float, // gözler arası referans mesafesi
-    val yOffsetRatio: Float           // göz hizasına göre dikey ofset oranı
+    val url: String,
+    val scale: Float = 210f,
+    val smoothFactor: Float = 0.02f
 )
 
-// Gözlüklerin listesini yöneten nesne
 object GlassesRepo {
-
-    val all: List<GlassesSpec> = listOf(
-        GlassesSpec(R.drawable.glasses_black, 230f, 0.05f),
-        GlassesSpec(R.drawable.glasses_gold, 230f, 0.05f),
-        GlassesSpec(R.drawable.glasses_round, 230f, 0.05f),
-        GlassesSpec(R.drawable.glasses_black_full, 240f, 0.04f) // yeni model
-    )
-
-    // Deeplink'ten gelen model anahtarını liste index'ine çevirir
-    fun indexOfKey(key: String?): Int = when (key) {
-        "black" -> 0
-        "gold" -> 1
-        "round" -> 2
-        "blackfull", "black_full" -> 3
-        else -> 0
+    fun loadGlasses(onResult: (List<GlassesSpec>) -> Unit) {
+        val storage = FirebaseStorage.getInstance().reference
+        val models = listOf("glasses_black.png", "glasses_black_full.png", "glasses_gold.png", "glasses_round.png")
+        val list = mutableListOf<GlassesSpec>()
+        var loaded = 0
+        for (name in models) {
+            storage.child(name).downloadUrl.addOnSuccessListener { uri ->
+                list.add(GlassesSpec(uri.toString()))
+                loaded++
+                if (loaded == models.size) onResult(list)
+            }.addOnFailureListener {
+                loaded++
+                if (loaded == models.size) onResult(list)
+            }
+        }
     }
 }

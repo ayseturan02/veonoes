@@ -1,0 +1,8 @@
+{
+  "react-native": {
+    "app_name": "veonoes",
+    "config": {
+      "storage_bucket": "veonoes.firebasestorage.app"
+    }
+  }
+}
