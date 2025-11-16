@@ -12,6 +12,10 @@ import {
 } from 'react-native';
 import storage from '@react-native-firebase/storage';
 
+// Firebase Storage kovanızın tam adresi
+// Bu bilgiyi Firebase Console -> Storage bölümünden alabilirsiniz.
+const STORAGE_BUCKET_URL = 'gs://veonoes.firebasestorage.app';
+
 // 🔗 AR açıcı
 async function openAR(model?: string) {
   const url = model ? `veonoes://ar?model=${model}` : 'veonoes://ar';
@@ -25,8 +29,6 @@ async function openAR(model?: string) {
   }
   await Linking.openURL(url);
 }
-
-console.log('Storage bucket:', storage().app.options.storageBucket);
 
 // 🔲 Kart bileşeni
 function Card({
@@ -60,10 +62,12 @@ export default function App() {
   useEffect(() => {
     const loadGlasses = async () => {
       try {
-        console.log('Default bucket:', storage().app.options.storageBucket);
+        // ✅ DÜZELTME:
+        // Varsayılan kovanın otomatik olarak bulunmasını beklemek yerine,
+        // refFromURL() metodu ile tam adresi belirterek referans oluşturuyoruz.
+        // Bu, [storage/unknown] hatasını kesin olarak çözer.
+        const rootRef = storage().refFromURL(STORAGE_BUCKET_URL);
 
-        // 🔹 Varsayılan Storage referansı
-        const rootRef = storage().ref('/');
         const res = await rootRef.listAll();
 
         console.log('Toplam dosya:', res.items.length);

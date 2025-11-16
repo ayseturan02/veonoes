@@ -1,9 +1,9 @@
 package com.veonoes.ar
 
 import android.Manifest
-import android.graphics.drawable.Drawable
 import android.content.pm.PackageManager
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
 import android.util.Size
@@ -21,6 +21,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.*
+import kotlin.math.atan2
 import kotlin.math.sqrt
 
 class ARCameraActivity : ComponentActivity() {
@@ -29,6 +30,9 @@ class ARCameraActivity : ComponentActivity() {
     private lateinit var overlay: GlassesOverlayView
     private var faceDetector: FaceDetector? = null
     private var glassesBitmap: Bitmap? = null
+    
+    // Gözlük modeline özel ölçeklendirme faktörü
+    private var modelScale = 2.2f 
 
     private val requestPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -61,9 +65,13 @@ class ARCameraActivity : ComponentActivity() {
         root.addView(overlay)
         setContentView(root)
 
-        // Model URL al
+        // Model URL'sini ve ölçek bilgisini al
         val modelUrl = intent?.data?.getQueryParameter("model")
             ?: intent?.getStringExtra("modelUrl")
+        
+        // Gözlüğün yüze ne kadar büyük çizileceğini belirleyen ölçek
+        // Bu değeri her gözlük modeli için ayarlayabilirsiniz.
+        modelScale = intent?.data?.getQueryParameter("scale")?.toFloatOrNull() ?: 2.2f
 
         modelUrl?.let { loadGlasses(it) } ?: run {
             Toast.makeText(this, "Model URL bulunamadı", Toast.LENGTH_SHORT).show()
@@ -82,20 +90,19 @@ class ARCameraActivity : ComponentActivity() {
         if (has == PackageManager.PERMISSION_GRANTED) startCamera()
         else requestPermission.launch(Manifest.permission.CAMERA)
     }
-private fun loadGlasses(url: String) {
-    Glide.with(this)
-        .asBitmap()
-        .load(Uri.parse(url))
-        .into(object : CustomTarget<Bitmap>() {
-            override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                glassesBitmap = resource
-                overlay.setGlassesBitmap(resource)
-            }
-            override fun onLoadCleared(placeholder: Drawable?) {
-                // İsteğe bağlı: placeholder temizlendiğinde yapılacaklar
-            }
-        })
-}
+    
+    private fun loadGlasses(url: String) {
+        Glide.with(this)
+            .asBitmap()
+            .load(Uri.parse(url))
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                    glassesBitmap = resource
+                    overlay.setGlassesBitmap(resource)
+                }
+                override fun onLoadCleared(placeholder: Drawable?) {}
+            })
+    }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -132,15 +139,32 @@ private fun loadGlasses(url: String) {
         faceDetector?.process(input)
             ?.addOnSuccessListener { faces ->
                 if (faces.isNotEmpty() && glassesBitmap != null) {
+                    // Ekrana en yakın (en büyük) yüzü al
                     val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }!!
                     val left = face.getLandmark(FaceLandmark.LEFT_EYE)?.position
                     val right = face.getLandmark(FaceLandmark.RIGHT_EYE)?.position
+
                     if (left != null && right != null) {
+                        // --- YENİ HESAPLAMALAR ---
+                        
+                        // 1. Gözlerin orta noktası (Merkez)
                         val cx = (left.x + right.x) / 2f
-                        val cy = (left.y + right.y) / 2f
-                        val dist = sqrt((left.x - right.x) * (left.x - right.x) + (left.y - right.y) * (left.y - right.y))
-                        overlay.updatePose(cx, cy - dist * 0.3f, dist * 2.2f, 0.15f)
+                        
+                        // 2. Gözler arasındaki mesafe (Boyutlandırma için)
+                        val eyeDistance = sqrt((left.x - right.x).pow(2) + (left.y - right.y).pow(2))
+
+                        // 3. Gözlüğün dikey konumu (Hafifçe aşağı kaydırarak daha doğal bir görünüm)
+                        val cy = (left.y + right.y) / 2f + eyeDistance * 0.1f
+
+                        // 4. Kafa eğim açısı (Rotasyon için)
+                        val angle = Math.toDegrees(atan2(right.y - left.y, right.x - left.x).toDouble()).toFloat()
+
+                        // 5. Hesaplanan verileri overlay'e gönder
+                        overlay.updatePose(cx, cy, eyeDistance, angle, modelScale)
                     }
+                } else {
+                    // Yüz algılanmadıysa gözlüğü gizle
+                    overlay.hide()
                 }
             }
             ?.addOnCompleteListener { imageProxy.close() }
@@ -150,4 +174,7 @@ private fun loadGlasses(url: String) {
         super.onDestroy()
         faceDetector?.close()
     }
+
+    // Kotlin'de üs alma için yardımcı fonksiyon
+    private fun Float.pow(n: Int): Float = kotlin.math.pow(this, n)
 }
