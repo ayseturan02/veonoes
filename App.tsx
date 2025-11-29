@@ -12,11 +12,9 @@ import {
 } from 'react-native';
 import storage from '@react-native-firebase/storage';
 
-// Firebase Storage kovanızın tam adresi
-// Bu bilgiyi Firebase Console -> Storage bölümünden alabilirsiniz.
 const STORAGE_BUCKET_URL = 'gs://veonoes.firebasestorage.app';
 
-// 🔗 AR açıcı
+
 async function openAR(model?: string) {
   const url = model ? `veonoes://ar?model=${model}` : 'veonoes://ar';
   const ok = await Linking.canOpenURL(url);
